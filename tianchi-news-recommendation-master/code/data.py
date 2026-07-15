@@ -36,7 +36,7 @@ def data_offline(df_train_click, df_test_click):
     click_list = []
     valid_query_list = []
 
-    groups = df_train_click.groupby(['user_id'])
+    groups = df_train_click.groupby('user_id')
     for user_id, g in tqdm(groups):
         if user_id in val_users:
             valid_query = g.tail(1)
