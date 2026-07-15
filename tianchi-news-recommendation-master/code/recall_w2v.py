@@ -1,5 +1,4 @@
 import argparse
-import math
 import os
 import pickle
 import random
@@ -21,7 +20,7 @@ warnings.filterwarnings('ignore')
 
 max_threads = multitasking.config['CPU_CORES']
 multitasking.set_max_threads(max_threads)
-multitasking.set_engine('process')
+multitasking.set_engine('thread')
 signal.signal(signal.SIGINT, multitasking.killall)
 
 seed = 2020
@@ -45,8 +44,8 @@ log.info(f'w2v 召回，mode: {mode}')
 
 def word2vec(df_, f1, f2, model_path):
     df = df_.copy()
-    tmp = df.groupby(f1, as_index=False)[f2].agg(
-        {'{}_{}_list'.format(f1, f2): list})
+    tmp = df.groupby(f1, as_index=False)[f2].agg(list)
+    tmp.columns = [f1, '{}_{}_list'.format(f1, f2)]
 
     sentences = tmp['{}_{}_list'.format(f1, f2)].values.tolist()
     del tmp['{}_{}_list'.format(f1, f2)]
@@ -61,7 +60,7 @@ def word2vec(df_, f1, f2, model_path):
         model = Word2Vec.load(f'{model_path}/w2v.m')
     else:
         model = Word2Vec(sentences=sentences,
-                         size=256,
+                         vector_size=256,
                          window=3,
                          min_count=1,
                          sg=1,
@@ -69,18 +68,17 @@ def word2vec(df_, f1, f2, model_path):
                          seed=seed,
                          negative=5,
                          workers=10,
-                         iter=1)
+                         epochs=1)
         model.save(f'{model_path}/w2v.m')
 
     article_vec_map = {}
     for word in set(words):
-        if word in model:
-            article_vec_map[int(word)] = model[word]
+        if word in model.wv:
+            article_vec_map[int(word)] = model.wv[word]
 
     return article_vec_map
 
 
-@multitasking.task
 def recall(df_query, article_vec_map, article_index, user_item_dict,
            worker_id):
     data_list = []
@@ -137,6 +135,7 @@ if __name__ == '__main__':
 
         os.makedirs('../user_data/data/offline', exist_ok=True)
         os.makedirs('../user_data/model/offline', exist_ok=True)
+        os.makedirs('../user_data/tmp/w2v', exist_ok=True)
 
         w2v_file = '../user_data/data/offline/article_w2v.pkl'
         model_path = '../user_data/model/offline'
@@ -146,6 +145,7 @@ if __name__ == '__main__':
 
         os.makedirs('../user_data/data/online', exist_ok=True)
         os.makedirs('../user_data/model/online', exist_ok=True)
+        os.makedirs('../user_data/tmp/w2v', exist_ok=True)
 
         w2v_file = '../user_data/data/online/article_w2v.pkl'
         model_path = '../user_data/model/online'
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     all_users = df_query['user_id'].unique()
     shuffle(all_users)
     total = len(all_users)
-    n_len = total // n_split
+    n_len = max(1, total // n_split)
 
     # 清空临时文件夹
     for path, _, file_list in os.walk('../tmp/w2v'):
@@ -190,14 +190,15 @@ if __name__ == '__main__':
         df_temp = df_query[df_query['user_id'].isin(part_users)]
         recall(df_temp, article_vec_map, article_index, user_item_dict, i)
 
-    multitasking.wait_for_tasks()
     log.info('合并任务')
 
-    df_data = pd.DataFrame()
+    df_data_list = []
     for path, _, file_list in os.walk('../user_data/tmp/w2v'):
         for file_name in file_list:
             df_temp = pd.read_pickle(os.path.join(path, file_name))
-            df_data = df_data.append(df_temp)
+            df_data_list.append(df_temp)
+
+    df_data = pd.concat(df_data_list, ignore_index=True)
 
     # 必须加，对其进行排序
     df_data = df_data.sort_values(['user_id', 'sim_score'],

@@ -5,14 +5,12 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from pandarallel import pandarallel
 
 from utils import Logger
 
 pd.set_option('display.max_columns', None)
 pd.set_option('display.max_rows', None)
 
-pandarallel.initialize()
 
 warnings.filterwarnings('ignore')
 
@@ -181,59 +179,49 @@ if __name__ == '__main__':
         'click_timestamp'] - df_click['created_at_ts']
 
     # 点击文章的创建时间差的统计值
-    df_temp = df_click.groupby(
-        ['user_id'])['click_timestamp_created_at_ts_diff'].agg({
-            'user_click_timestamp_created_at_ts_diff_mean':
-            'mean',
-            'user_click_timestamp_created_at_ts_diff_std':
-            'std'
-        }).reset_index()
+    df_temp = df_click.groupby('user_id')['click_timestamp_created_at_ts_diff'].agg(
+        user_click_timestamp_created_at_ts_diff_mean='mean',
+        user_click_timestamp_created_at_ts_diff_std='std'
+    ).reset_index()
     df_feature = df_feature.merge(df_temp, how='left')
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
 
     # 点击的新闻的 click_datetime_hour 统计值
-    df_temp = df_click.groupby(['user_id'])['click_datetime_hour'].agg({
-        'user_click_datetime_hour_std':
-        'std'
-    }).reset_index()
+    df_temp = df_click.groupby('user_id')['click_datetime_hour'].agg(
+        user_click_datetime_hour_std='std'
+    ).reset_index()
     df_feature = df_feature.merge(df_temp, how='left')
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
 
     # 点击的新闻的 words_count 统计值
-    df_temp = df_click.groupby(['user_id'])['words_count'].agg({
-        'user_clicked_article_words_count_mean':
-        'mean',
-        'user_click_last_article_words_count':
-        lambda x: x.iloc[-1]
-    }).reset_index()
+    df_temp = df_click.groupby('user_id')['words_count'].agg(
+        user_clicked_article_words_count_mean='mean',
+        user_click_last_article_words_count=lambda x: x.iloc[-1]
+    ).reset_index()
     df_feature = df_feature.merge(df_temp, how='left')
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
 
     # 点击的新闻的 created_at_ts 统计值
-    df_temp = df_click.groupby('user_id')['created_at_ts'].agg({
-        'user_click_last_article_created_time':
-        lambda x: x.iloc[-1],
-        'user_clicked_article_created_time_max':
-        'max',
-    }).reset_index()
+    df_temp = df_click.groupby('user_id')['created_at_ts'].agg(
+        user_click_last_article_created_time=lambda x: x.iloc[-1],
+        user_clicked_article_created_time_max='max'
+    ).reset_index()
     df_feature = df_feature.merge(df_temp, how='left')
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
 
     # 点击的新闻的 click_timestamp 统计值
-    df_temp = df_click.groupby('user_id')['click_timestamp'].agg({
-        'user_click_last_article_click_time':
-        lambda x: x.iloc[-1],
-        'user_clicked_article_click_time_mean':
-        'mean',
-    }).reset_index()
+    df_temp = df_click.groupby('user_id')['click_timestamp'].agg(
+        user_click_last_article_click_time=lambda x: x.iloc[-1],
+        user_clicked_article_click_time_mean='mean'
+    ).reset_index()
     df_feature = df_feature.merge(df_temp, how='left')
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
@@ -277,10 +265,10 @@ if __name__ == '__main__':
     # 用户历史点击物品与待预测物品相似度
     df_feature['user_clicked_article_itemcf_sim_sum'] = df_feature[[
         'user_id', 'article_id'
-    ]].parallel_apply(func_if_sum, axis=1)
+    ]].apply(func_if_sum, axis=1)
     df_feature['user_last_click_article_itemcf_sim'] = df_feature[[
         'user_id', 'article_id'
-    ]].parallel_apply(func_if_last, axis=1)
+    ]].apply(func_if_last, axis=1)
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
@@ -297,7 +285,7 @@ if __name__ == '__main__':
 
     df_feature['user_last_click_article_binetwork_sim'] = df_feature[[
         'user_id', 'article_id'
-    ]].parallel_apply(func_binetwork_sim_last, axis=1)
+    ]].apply(func_binetwork_sim_last, axis=1)
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')
@@ -314,10 +302,10 @@ if __name__ == '__main__':
 
     df_feature['user_last_click_article_w2v_sim'] = df_feature[[
         'user_id', 'article_id'
-    ]].parallel_apply(func_w2w_last_sim, axis=1)
+    ]].apply(func_w2w_last_sim, axis=1)
     df_feature['user_click_article_w2w_sim_sum_2'] = df_feature[[
         'user_id', 'article_id'
-    ]].parallel_apply(lambda x: func_w2w_sum(x, 2), axis=1)
+    ]].apply(lambda x: func_w2w_sum(x, 2), axis=1)
 
     log.debug(f'df_feature.shape: {df_feature.shape}')
     log.debug(f'df_feature.columns: {df_feature.columns.tolist()}')

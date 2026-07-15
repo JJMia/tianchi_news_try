@@ -84,9 +84,11 @@ def train_model(df_feature, df_query):
                               Y_train,
                               eval_names=['train', 'valid'],
                               eval_set=[(X_train, Y_train), (X_val, Y_val)],
-                              verbose=100,
-                              eval_metric='auc',
-                              early_stopping_rounds=100)
+                              callbacks=[
+                                  lgb.log_evaluation(100),
+                                  lgb.early_stopping(100)
+                              ],
+                              eval_metric='auc')
 
         pred_val = lgb_model.predict_proba(
             X_val, num_iteration=lgb_model.best_iteration_)[:, 1]
@@ -107,7 +109,7 @@ def train_model(df_feature, df_query):
         })
         df_importance_list.append(df_importance)
 
-        joblib.dump(model, f'../user_data/model/lgb{fold_id}.pkl')
+        joblib.dump(lgb_model, f'../user_data/model/lgb{fold_id}.pkl')
 
     # 特征重要性
     df_importance = pd.concat(df_importance_list)

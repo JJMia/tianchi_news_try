@@ -4,7 +4,6 @@ import os
 import pickle
 import random
 import signal
-from collections import defaultdict
 from random import shuffle
 
 import multitasking
@@ -16,7 +15,7 @@ from utils import Logger, evaluate
 
 max_threads = multitasking.config['CPU_CORES']
 multitasking.set_max_threads(max_threads)
-multitasking.set_engine('process')
+multitasking.set_engine('thread')
 signal.signal(signal.SIGINT, multitasking.killall)
 
 random.seed(2020)
@@ -63,7 +62,6 @@ def cal_sim(df):
     return sim_dict, user_item_dict
 
 
-@multitasking.task
 def recall(df_query, item_sim, user_item_dict, worker_id):
     data_list = []
 
@@ -138,7 +136,7 @@ if __name__ == '__main__':
     all_users = df_query['user_id'].unique()
     shuffle(all_users)
     total = len(all_users)
-    n_len = total // n_split
+    n_len = max(1, total // n_split)
 
     # 清空临时文件夹
     for path, _, file_list in os.walk('../user_data/tmp/binetwork'):
@@ -153,11 +151,13 @@ if __name__ == '__main__':
     multitasking.wait_for_tasks()
     log.info('合并任务')
 
-    df_data = pd.DataFrame()
+    df_data_list = []
     for path, _, file_list in os.walk('../user_data/tmp/binetwork'):
         for file_name in file_list:
             df_temp = pd.read_pickle(os.path.join(path, file_name))
-            df_data = df_data.append(df_temp)
+            df_data_list.append(df_temp)
+
+    df_data = pd.concat(df_data_list, ignore_index=True)
 
     # 必须加，对其进行排序
     df_data = df_data.sort_values(['user_id', 'sim_score'],
