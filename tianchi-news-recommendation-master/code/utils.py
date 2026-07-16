@@ -1,3 +1,15 @@
+## 公共工具模块
+''' 
+它里面一般放这些东西：
+1. Logger：日志工具
+2. evaluate：召回/排序评估指标
+3. gen_sub：生成提交文件
+4. reduce_mem_usage：内存优化
+5. 一些通用辅助函数
+
+它就是整个项目的“工具箱”。
+'''
+
 import logging
 import os
 import pickle

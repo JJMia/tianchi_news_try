@@ -1,3 +1,16 @@
+## 训练 LightGBM 排序模型并生成最终结果
+''' 
+这个脚本会把多路召回结果拼起来，然后给每个 (user, article) 候选对做特征，包含例如：
+1. 读取 feature.pkl
+2. 编码类别特征
+3. 用 GroupKFold 做 5 折训练
+4. 训练 LightGBM 排序模型
+5. 在 valid 模式下评估指标
+6. 在 online 模式下生成提交文件
+
+可以把它理解成最后的“裁判”，负责从候选里挑出最好的文章排序。
+
+'''
 import argparse
 import gc
 import os

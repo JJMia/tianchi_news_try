@@ -1,3 +1,17 @@
+## 基于 Word2Vec 的召回
+''' 
+---------主要负责--------
+1. 把用户点击序列当成“句子”
+2. 用 Word2Vec 学习文章 embedding
+3. 用 Annoy 建索引做近邻搜索
+4. 为每个用户召回相似文章
+
+它的特点是：
+不只看共现次数
+还能学到文章向量表示
+通常比纯 ItemCF 更灵活一些
+'''
+
 import argparse
 import os
 import pickle
